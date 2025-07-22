@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bird Fly Game</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Flappy Bird Mini</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #222; overflow: hidden; font-family: sans-serif; color: #fff; }
-    canvas { display: block; margin: auto; background: linear-gradient(to bottom, #87CEEB, #fff); }
-    .popup, .start-overlay {
+    body { background: #222; overflow: hidden; font-family: sans-serif; }
+    canvas { display: block; margin: 0 auto; background: linear-gradient(to bottom, #87CEEB, #ffffff); }
+
+    .overlay, .popup {
       position: absolute;
       top: 50%;
       left: 50%;
@@ -20,51 +21,61 @@
       text-align: center;
       z-index: 10;
     }
-    .popup.hidden, .start-overlay.hidden { display: none; }
+
+    .overlay.hidden, .popup.hidden { display: none; }
+
     .btn {
-      margin: 10px;
+      margin-top: 15px;
       padding: 10px 20px;
       background: linear-gradient(45deg, #4facfe, #00f2fe);
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
     }
+
     .btn:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
+
 <canvas id="gameCanvas" width="400" height="600"></canvas>
 
-<div id="startOverlay" class="start-overlay">
-  <h2>Bird Flying Game</h2>
-  <p>Click anywhere to fly! Avoid pipes and survive as long as you can.</p>
+<!-- Start overlay -->
+<div class="overlay" id="startOverlay">
+  <h2>Flappy Bird Mini</h2>
+  <p>Click or press SPACE to flap!<br/>Avoid the pipes. Good luck!</p>
   <button class="btn" onclick="startGame()">Start Game</button>
 </div>
 
-<div id="popup" class="popup hidden"></div>
+<!-- Popup messages -->
+<div class="popup hidden" id="popup"></div>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const startOverlay = document.getElementById('startOverlay');
-const popup = document.getElementById('popup');
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const startOverlay = document.getElementById("startOverlay");
+const popup = document.getElementById("popup");
 
-let birdImg = new Image();
-birdImg.src = 'https://upload.wikimedia.org/wikipedia/commons/3/32/Flying_bird_silhouette.png';
+const adLinks = ["https://example.com", "https://google.com", "https://bing.com"];
 
-let bird = { x: 80, y: 200, width: 40, height: 30, velocity: 0 };
+let bird = { x: 60, y: 200, width: 35, height: 35, velocity: 0 };
 let gravity = 0.6;
 let lift = -10;
+
 let pipes = [];
+let pipeInterval = 1500;
+let lastPipeTime = 0;
+
 let score = 0;
 let highScore = 0;
 let gameOver = false;
 let started = false;
-let interval = 1500;
-let lastPipe = Date.now();
-let adLinks = ["https://example.com/ad1", "https://example.com/ad2", "https://example.com/ad3"];
 let lastAdShown = Date.now();
+
+// Bird SVG as fallback
+const birdImage = new Image();
+birdImage.src = "data:image/svg+xml;utf8,<svg width='40' height='40' xmlns='http://www.w3.org/2000/svg'><circle cx='20' cy='20' r='18' fill='gold' stroke='black' stroke-width='2'/></svg>";
 
 function resetGame() {
   bird.y = 200;
@@ -73,99 +84,114 @@ function resetGame() {
   score = 0;
   gameOver = false;
   started = false;
-  startOverlay.classList.remove('hidden');
+  startOverlay.classList.remove("hidden");
 }
 
 function startGame() {
   started = true;
-  lastPipe = Date.now();
+  gameOver = false;
+  lastPipeTime = Date.now();
   lastAdShown = Date.now();
-  startOverlay.classList.add('hidden');
+  startOverlay.classList.add("hidden");
+}
+
+function flap() {
+  if (!started || gameOver) return;
+  bird.velocity = lift;
+}
+
+function showPopup(msg, restart = false) {
+  popup.innerHTML = msg;
+  popup.classList.remove("hidden");
+
+  if (restart) {
+    popup.innerHTML += `<br><button class='btn' onclick='resetGame()'>Restart</button>`;
+  }
+
+  if (!restart) {
+    setTimeout(() => popup.classList.add("hidden"), 2000);
+  }
 }
 
 function drawBird() {
-  ctx.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
+  ctx.drawImage(birdImage, bird.x, bird.y, bird.width, bird.height);
 }
 
 function drawPipes() {
-  pipes.forEach(pipe => {
-    ctx.fillStyle = "green";
-    ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
-    ctx.fillRect(pipe.x, pipe.bottom, pipe.width, canvas.height);
-  });
+  ctx.fillStyle = "green";
+  for (let p of pipes) {
+    ctx.fillRect(p.x, 0, p.width, p.top);
+    ctx.fillRect(p.x, p.bottom, p.width, canvas.height - p.bottom);
+  }
 }
 
 function drawScore() {
-  ctx.fillStyle = "black";
+  ctx.fillStyle = "#000";
   ctx.font = "20px Arial";
   ctx.fillText("Score: " + score, 10, 30);
-  ctx.fillText("High Score: " + highScore, 10, 60);
+  ctx.fillText("High: " + highScore, 10, 60);
 }
 
-function showPopup(message, restart = false) {
-  popup.textContent = message;
-  popup.classList.remove("hidden");
-  if (restart) {
-    popup.innerHTML += '<br><button class="btn" onclick="resetGame()">Restart</button>';
-  }
-  setTimeout(() => popup.classList.add("hidden"), restart ? 9999 : 2000);
-}
-
-function openRandomAd() {
-  const ad = adLinks[Math.floor(Math.random() * adLinks.length)];
-  window.open(ad, '_blank');
+function openAdTab() {
+  const url = adLinks[Math.floor(Math.random() * adLinks.length)];
+  window.open(url, "_blank");
 }
 
 function update() {
   if (!started || gameOver) return;
 
   const now = Date.now();
+
   bird.velocity += gravity;
   bird.y += bird.velocity;
 
-  if (now - lastPipe > interval) {
-    const top = Math.random() * 200 + 50;
-    const gap = 120;
+  if (now - lastPipeTime > pipeInterval) {
+    const top = Math.random() * 250 + 30;
+    const gap = 140;
     pipes.push({
       x: canvas.width,
-      width: 50,
-      top: top,
-      bottom: top + gap
+      width: 60,
+      top,
+      bottom: top + gap,
+      passed: false,
     });
-    lastPipe = now;
+    lastPipeTime = now;
   }
 
   pipes.forEach(pipe => pipe.x -= 3);
   pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
 
   for (let pipe of pipes) {
+    // Collision
     if (
       bird.x + bird.width > pipe.x &&
       bird.x < pipe.x + pipe.width &&
       (bird.y < pipe.top || bird.y + bird.height > pipe.bottom)
     ) {
       gameOver = true;
-      highScore = Math.max(score, highScore);
-      showPopup("Game Over! Score: " + score, true);
+      highScore = Math.max(highScore, score);
+      showPopup("💥 Game Over!<br>Score: " + score, true);
       return;
     }
-    if (pipe.x + pipe.width < bird.x && !pipe.passed) {
+
+    // Score
+    if (!pipe.passed && pipe.x + pipe.width < bird.x) {
       pipe.passed = true;
       score++;
-      if (score % 100 === 0) {
-        showPopup(score + "m completed!");
-      }
+      if (score % 100 === 0) showPopup(score + "m reached!");
     }
   }
 
+  // Fall off screen
   if (bird.y > canvas.height || bird.y < 0) {
     gameOver = true;
-    highScore = Math.max(score, highScore);
-    showPopup("Game Over!", true);
+    highScore = Math.max(highScore, score);
+    showPopup("💥 You fell!<br>Score: " + score, true);
   }
 
+  // Random ad tab every 20s
   if (now - lastAdShown > 20000) {
-    openRandomAd();
+    openAdTab();
     lastAdShown = now;
   }
 }
@@ -185,20 +211,15 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-canvas.addEventListener("click", () => {
-  if (started && !gameOver) {
-    bird.velocity = lift;
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === ' ' && started && !gameOver) {
-    bird.velocity = lift;
-  }
+// Input listeners
+canvas.addEventListener("click", flap);
+document.addEventListener("keydown", e => {
+  if (e.key === " " || e.key === "ArrowUp") flap();
 });
 
 resetGame();
 loop();
 </script>
+
 </body>
 </html>
