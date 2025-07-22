@@ -57,7 +57,13 @@ const ctx = canvas.getContext("2d");
 const startOverlay = document.getElementById("startOverlay");
 const popup = document.getElementById("popup");
 
-const adLinks = ["https://example.com", "https://google.com", "https://bing.com"];
+const adLinks = [
+  "https://example.com/ad1", "https://example.com/ad2", "https://example.com/ad3",
+  "https://example.com/ad4", "https://example.com/ad5", "https://example.com/ad6",
+  "https://example.com/ad7", "https://example.com/ad8", "https://example.com/ad9",
+  "https://example.com/ad10", "https://example.com/ad11", "https://example.com/ad12",
+  "https://example.com/ad13", "https://example.com/ad14", "https://example.com/ad15"
+];
 
 let bird = { x: 60, y: 200, width: 35, height: 35, velocity: 0 };
 let gravity = 0.6;
@@ -73,7 +79,6 @@ let gameOver = false;
 let started = false;
 let lastAdShown = Date.now();
 
-// Bird SVG as fallback
 const birdImage = new Image();
 birdImage.src = "data:image/svg+xml;utf8,<svg width='40' height='40' xmlns='http://www.w3.org/2000/svg'><circle cx='20' cy='20' r='18' fill='gold' stroke='black' stroke-width='2'/></svg>";
 
@@ -84,14 +89,20 @@ function resetGame() {
   score = 0;
   gameOver = false;
   started = false;
+  popup.classList.add("hidden");
   startOverlay.classList.remove("hidden");
 }
 
 function startGame() {
-  started = true;
+  bird.y = 200;
+  bird.velocity = 0;
+  pipes = [];
+  score = 0;
   gameOver = false;
+  started = true;
   lastPipeTime = Date.now();
   lastAdShown = Date.now();
+  popup.classList.add("hidden");
   startOverlay.classList.add("hidden");
 }
 
@@ -103,11 +114,9 @@ function flap() {
 function showPopup(msg, restart = false) {
   popup.innerHTML = msg;
   popup.classList.remove("hidden");
-
   if (restart) {
-    popup.innerHTML += `<br><button class='btn' onclick='resetGame()'>Restart</button>`;
+    popup.innerHTML += `<br><button class='btn' onclick='startGame()'>Restart</button>`;
   }
-
   if (!restart) {
     setTimeout(() => popup.classList.add("hidden"), 2000);
   }
@@ -162,7 +171,6 @@ function update() {
   pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
 
   for (let pipe of pipes) {
-    // Collision
     if (
       bird.x + bird.width > pipe.x &&
       bird.x < pipe.x + pipe.width &&
@@ -173,8 +181,6 @@ function update() {
       showPopup("💥 Game Over!<br>Score: " + score, true);
       return;
     }
-
-    // Score
     if (!pipe.passed && pipe.x + pipe.width < bird.x) {
       pipe.passed = true;
       score++;
@@ -182,14 +188,12 @@ function update() {
     }
   }
 
-  // Fall off screen
   if (bird.y > canvas.height || bird.y < 0) {
     gameOver = true;
     highScore = Math.max(highScore, score);
     showPopup("💥 You fell!<br>Score: " + score, true);
   }
 
-  // Random ad tab every 20s
   if (now - lastAdShown > 20000) {
     openAdTab();
     lastAdShown = now;
@@ -211,7 +215,6 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// Input listeners
 canvas.addEventListener("click", flap);
 document.addEventListener("keydown", e => {
   if (e.key === " " || e.key === "ArrowUp") flap();
