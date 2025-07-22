@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bird Fly Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #222; overflow: hidden; font-family: sans-serif; color: #fff; }
+    canvas { display: block; margin: auto; background: linear-gradient(to bottom, #87CEEB, #fff); }
+    .popup {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      padding: 10px 20px;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 20px;
+      z-index: 10;
+      animation: fade 1s ease-in-out;
+    }
+    @keyframes fade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+<div id="popup" class="popup" style="display: none;">Milestone!</div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let bird = { x: 80, y: 200, radius: 15, velocity: 0 };
+let gravity = 0.6;
+let lift = -10;
+let pipes = [];
+let score = 0;
+let highScore = 0;
+let gameOver = false;
+let interval = 1500;
+let lastPipe = Date.now();
+let adLinks = ["https://example.com/ad1", "https://example.com/ad2", "https://example.com/ad3"];
+let lastAdShown = Date.now();
+
+function resetGame() {
+  bird.y = 200;
+  bird.velocity = 0;
+  pipes = [];
+  score = 0;
+  gameOver = false;
+}
+
+function drawBird() {
+  ctx.beginPath();
+  ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+  ctx.fillStyle = "yellow";
+  ctx.fill();
+}
+
+function drawPipes() {
+  pipes.forEach(pipe => {
+    ctx.fillStyle = "green";
+    ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+    ctx.fillRect(pipe.x, pipe.bottom, pipe.width, canvas.height);
+  });
+}
+
+function drawScore() {
+  ctx.fillStyle = "black";
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 10, 30);
+  ctx.fillText("High Score: " + highScore, 10, 60);
+}
+
+function showPopup(message) {
+  const popup = document.getElementById("popup");
+  popup.textContent = message;
+  popup.style.display = "block";
+  setTimeout(() => popup.style.display = "none", 2000);
+}
+
+function openRandomAd() {
+  const ad = adLinks[Math.floor(Math.random() * adLinks.length)];
+  window.open(ad, '_blank');
+}
+
+function update() {
+  if (gameOver) return;
+
+  const now = Date.now();
+  bird.velocity += gravity;
+  bird.y += bird.velocity;
+
+  if (now - lastPipe > interval) {
+    const top = Math.random() * 200 + 50;
+    const gap = 120;
+    pipes.push({
+      x: canvas.width,
+      width: 50,
+      top: top,
+      bottom: top + gap
+    });
+    lastPipe = now;
+  }
+
+  pipes.forEach(pipe => pipe.x -= 3);
+
+  pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+
+  for (let pipe of pipes) {
+    if (
+      bird.x + bird.radius > pipe.x &&
+      bird.x - bird.radius < pipe.x + pipe.width &&
+      (bird.y - bird.radius < pipe.top || bird.y + bird.radius > pipe.bottom)
+    ) {
+      gameOver = true;
+      highScore = Math.max(score, highScore);
+      setTimeout(resetGame, 2000);
+      return;
+    }
+    if (pipe.x + pipe.width < bird.x && !pipe.passed) {
+      pipe.passed = true;
+      score++;
+      if (score % 100 === 0) {
+        showPopup(score + "m completed!");
+      }
+    }
+  }
+
+  if (bird.y > canvas.height || bird.y < 0) {
+    gameOver = true;
+    highScore = Math.max(score, highScore);
+    setTimeout(resetGame, 2000);
+  }
+
+  if (now - lastAdShown > 15000) {
+    openRandomAd();
+    lastAdShown = now;
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBird();
+  drawPipes();
+  drawScore();
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+canvas.addEventListener("click", () => {
+  if (!gameOver) {
+    bird.velocity = lift;
+  }
+});
+
+resetGame();
+loop();
+</script>
+</body>
+</html>
